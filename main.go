@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/georgebent/go-restorer/pkg/core"
 	"github.com/georgebent/go-restorer/pkg/file_manager"
 	"github.com/georgebent/go-restorer/pkg/io_manager"
@@ -31,13 +32,13 @@ func main() {
 		}
 	case "3":
 		backups := core.GetEnv("BACKUP_DIR")
-		folders, err := file_manager.ListFolders(backups)
+		archives, err := file_manager.ListBackups(backups)
 		if err != nil {
 			fmt.Println("Got error: ", err)
 		}
 
-		for _, folder := range folders {
-			println(folder)
+		for _, archive := range archives {
+			println(archive)
 		}
 	}
 }

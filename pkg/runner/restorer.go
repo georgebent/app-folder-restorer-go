@@ -2,33 +2,38 @@ package runner
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+
 	"github.com/georgebent/go-restorer/pkg/core"
 	"github.com/georgebent/go-restorer/pkg/file_manager"
 	"github.com/georgebent/go-restorer/pkg/io_manager"
-	"strconv"
 )
+
+var copyDirectory = file_manager.Copy
+var forceCopyDirectory = file_manager.ForceCopy
+var extractBackupArchive = file_manager.ExtractArchive
 
 func Restore() error {
 	backups := core.GetEnv("BACKUP_DIR")
 	source := core.GetEnv("ORIGIN_DIR")
 
-	folders, err := file_manager.ListFolders(backups)
+	backupsList, err := file_manager.ListBackups(backups)
 	if err != nil {
 		return err
 	}
 
 	options := map[string]string{}
-	for i, folder := range folders {
+	for i, backup := range backupsList {
 		key := strconv.Itoa(i + 1)
-		options[key] = folder
+		options[key] = backup
 	}
 
 	chosen := io_manager.Ask("Choose restore file", options)
+	backupPath := backupArchivePath(backups, options[chosen])
 
-	backupsTmpPath := fmt.Sprintf("%s/tmp", backups)
-	backupPath := fmt.Sprintf("%s/%s", backups, options[chosen])
-
-	err = restoreFromBackup(source, backupPath, backupsTmpPath)
+	err = restoreFromBackup(source, backupPath)
 	if err != nil {
 		return err
 	}
@@ -38,18 +43,34 @@ func Restore() error {
 	return nil
 }
 
-func restoreFromBackup(source, backupPath, backupsTmpPath string) error {
-	err := file_manager.ForceCopy(source, backupsTmpPath)
+func restoreFromBackup(source, backupPath string) error {
+	tempRoot, err := os.MkdirTemp("", "go-restorer-restore-*")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = os.RemoveAll(tempRoot)
+	}()
+
+	snapshotPath := filepath.Join(tempRoot, "snapshot")
+	extractedPath := filepath.Join(tempRoot, "extracted")
+
+	err = copyDirectory(source, snapshotPath)
 	if err != nil {
 		return err
 	}
 
-	err = file_manager.ForceCopy(backupPath, source)
+	err = extractBackupArchive(backupPath, extractedPath)
+	if err != nil {
+		return err
+	}
+
+	err = forceCopyDirectory(extractedPath, source)
 	if err == nil {
 		return nil
 	}
 
-	rollbackErr := file_manager.ForceCopy(backupsTmpPath, source)
+	rollbackErr := forceCopyDirectory(snapshotPath, source)
 	if rollbackErr != nil {
 		return fmt.Errorf("restore failed: %w; rollback failed: %v", err, rollbackErr)
 	}
