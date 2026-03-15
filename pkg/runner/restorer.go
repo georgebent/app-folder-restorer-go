@@ -28,12 +28,7 @@ func Restore() error {
 	backupsTmpPath := fmt.Sprintf("%s/tmp", backups)
 	backupPath := fmt.Sprintf("%s/%s", backups, options[chosen])
 
-	err = file_manager.ForceCopy(source, backupsTmpPath)
-	if err != nil {
-		return err
-	}
-
-	err = file_manager.ForceCopy(backupPath, source)
+	err = restoreFromBackup(source, backupPath, backupsTmpPath)
 	if err != nil {
 		return err
 	}
@@ -41,4 +36,23 @@ func Restore() error {
 	io_manager.Write(fmt.Sprintf("Folder %s restored from %s", source, backupPath))
 
 	return nil
+}
+
+func restoreFromBackup(source, backupPath, backupsTmpPath string) error {
+	err := file_manager.ForceCopy(source, backupsTmpPath)
+	if err != nil {
+		return err
+	}
+
+	err = file_manager.ForceCopy(backupPath, source)
+	if err == nil {
+		return nil
+	}
+
+	rollbackErr := file_manager.ForceCopy(backupsTmpPath, source)
+	if rollbackErr != nil {
+		return fmt.Errorf("restore failed: %w; rollback failed: %v", err, rollbackErr)
+	}
+
+	return fmt.Errorf("restore failed and rolled back: %w", err)
 }

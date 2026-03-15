@@ -5,6 +5,8 @@ import (
 	"github.com/georgebent/go-restorer/pkg/core"
 	"github.com/georgebent/go-restorer/pkg/file_manager"
 	"github.com/georgebent/go-restorer/pkg/io_manager"
+	"strconv"
+	"strings"
 )
 
 func QuickSave() error {
@@ -24,8 +26,7 @@ func saveByName(name string) error {
 		return err
 	}
 
-	length := len(folders) + 1
-	name = fmt.Sprintf("%d.%s", length, name)
+	name = buildBackupName(folders, name)
 
 	source := core.GetEnv("ORIGIN_DIR")
 	backupPath := fmt.Sprintf("%s/%s", backups, name)
@@ -38,4 +39,35 @@ func saveByName(name string) error {
 	io_manager.Write(fmt.Sprintf("Folder %s saved to %s", source, backupPath))
 
 	return nil
+}
+
+func buildBackupName(folders []string, name string) string {
+	return fmt.Sprintf("%d.%s", nextBackupIndex(folders), name)
+}
+
+func nextBackupIndex(folders []string) int {
+	maxIndex := 0
+
+	for _, folder := range folders {
+		index, ok := backupIndex(folder)
+		if ok && index > maxIndex {
+			maxIndex = index
+		}
+	}
+
+	return maxIndex + 1
+}
+
+func backupIndex(folder string) (int, bool) {
+	prefix, _, ok := strings.Cut(folder, ".")
+	if !ok {
+		return 0, false
+	}
+
+	index, err := strconv.Atoi(prefix)
+	if err != nil || index < 1 {
+		return 0, false
+	}
+
+	return index, true
 }

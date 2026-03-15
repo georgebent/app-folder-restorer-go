@@ -8,6 +8,14 @@ import (
 )
 
 func Copy(source, destination string) error {
+	_, err := os.Stat(destination)
+	if err == nil {
+		return fmt.Errorf("%s already exists", destination)
+	}
+	if !os.IsNotExist(err) {
+		return err
+	}
+
 	return copyFolder(source, destination)
 }
 
@@ -76,18 +84,26 @@ func copyFolder(src, dst string) error {
 	return nil
 }
 
-func copyFile(src, dst string) error {
+func copyFile(src, dst string) (err error) {
 	sourceFile, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-	defer sourceFile.Close()
+	defer func() {
+		if closeErr := sourceFile.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
 
 	destinationFile, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer destinationFile.Close()
+	defer func() {
+		if closeErr := destinationFile.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
 
 	_, err = io.Copy(destinationFile, sourceFile)
 	if err != nil {
@@ -97,7 +113,7 @@ func copyFile(src, dst string) error {
 	return nil
 }
 
-func clearFolder(path string) error {
+func clearFolder(path string) (err error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return nil
 	}
@@ -106,7 +122,11 @@ func clearFolder(path string) error {
 	if err != nil {
 		return err
 	}
-	defer dir.Close()
+	defer func() {
+		if closeErr := dir.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
 
 	entries, err := dir.Readdir(0)
 	if err != nil {

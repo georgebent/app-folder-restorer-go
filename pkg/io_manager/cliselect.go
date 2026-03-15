@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/buger/goterm"
 	"github.com/pkg/term"
-	"log"
 )
 
 var up byte = 65
@@ -14,6 +13,10 @@ var enter byte = 13
 var keys = map[byte]bool{
 	up:   true,
 	down: true,
+}
+
+var openTTY = func() (*term.Term, error) {
+	return term.Open("/dev/tty")
 }
 
 type Menu struct {
@@ -97,19 +100,27 @@ func (m *Menu) Display() string {
 }
 
 func getInput() byte {
-	t, _ := term.Open("/dev/tty")
-
-	err := term.RawMode(t)
+	t, err := openTTY()
 	if err != nil {
-		log.Fatal(err)
+		return 0
 	}
+	defer func() {
+		_ = t.Close()
+	}()
 
-	var read int
+	err = term.RawMode(t)
+	if err != nil {
+		return 0
+	}
+	defer func() {
+		_ = t.Restore()
+	}()
+
 	readBytes := make([]byte, 3)
-	read, err = t.Read(readBytes)
-
-	t.Restore()
-	t.Close()
+	read, err := t.Read(readBytes)
+	if err != nil {
+		return 0
+	}
 
 	if read == 3 {
 		if _, ok := keys[readBytes[2]]; ok {
@@ -120,4 +131,15 @@ func getInput() byte {
 	}
 
 	return 0
+}
+
+func supportsTTYMenu() bool {
+	t, err := openTTY()
+	if err != nil {
+		return false
+	}
+
+	_ = t.Close()
+
+	return true
 }
