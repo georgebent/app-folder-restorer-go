@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-`main.go` is the interactive CLI entrypoint. `cmd/quick-save/main.go` provides a shortcut command that runs the quick-save flow directly. Reusable code lives under `pkg/`: `pkg/core` loads environment values, `pkg/file_manager` handles directory copy and cleanup, `pkg/io_manager` contains console input/menu logic, and `pkg/runner` orchestrates save/restore actions. Local sample data lives in `origin/` and `backups/`; both paths are also referenced from `.env`.
+`main.go` is the interactive CLI entrypoint. `cmd/quick-save/main.go` provides a shortcut command that runs the quick-save flow directly. Reusable code lives under `pkg/`: `pkg/core` loads environment values, `pkg/file_manager` handles archive creation/extraction plus filesystem copy and cleanup, `pkg/io_manager` contains console input/menu logic, and `pkg/runner` orchestrates save/restore actions. Local sample data lives in `origin/` and `backups/`; both paths are also referenced from `.env`.
 
 ## Build, Test, and Development Commands
 Use standard Go tooling:

@@ -2,11 +2,13 @@ package runner
 
 import (
 	"fmt"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/georgebent/go-restorer/pkg/core"
 	"github.com/georgebent/go-restorer/pkg/file_manager"
 	"github.com/georgebent/go-restorer/pkg/io_manager"
-	"strconv"
-	"strings"
 )
 
 func QuickSave() error {
@@ -21,17 +23,17 @@ func Save() error {
 
 func saveByName(name string) error {
 	backups := core.GetEnv("BACKUP_DIR")
-	folders, err := file_manager.ListFolders(backups)
+	backupsList, err := file_manager.ListBackups(backups)
 	if err != nil {
 		return err
 	}
 
-	name = buildBackupName(folders, name)
+	name = buildBackupName(backupsList, name)
 
 	source := core.GetEnv("ORIGIN_DIR")
-	backupPath := fmt.Sprintf("%s/%s", backups, name)
+	backupPath := backupArchivePath(backups, name)
 
-	err = file_manager.Copy(source, backupPath)
+	err = file_manager.CreateArchive(source, backupPath)
 	if err != nil {
 		return err
 	}
@@ -70,4 +72,8 @@ func backupIndex(folder string) (int, bool) {
 	}
 
 	return index, true
+}
+
+func backupArchivePath(backupsDir, backupName string) string {
+	return filepath.Join(backupsDir, backupName+file_manager.BackupExtension)
 }

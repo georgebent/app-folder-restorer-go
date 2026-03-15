@@ -1,22 +1,23 @@
 # Go Restorer
 
-`go-restorer` is a small terminal utility for creating folder snapshots and restoring them later.
-It is intended for local workflows where you want a quick way to save the current state of a directory,
-experiment, and roll back to an earlier backup.
+`go-restorer` is a small terminal utility for creating folder snapshots as `.zip` archives
+and restoring them later. It is intended for local workflows where you want a quick way to save
+the current state of a directory, experiment, and roll back to an earlier backup.
 
 The application works with two filesystem locations:
 
 - `ORIGIN_DIR`: the directory you want to save and restore
 - `BACKUP_DIR`: the directory where snapshots are stored
 
-Each saved backup is created as a directory with a numeric prefix such as `1.first`, `2.quick_save`, `3.before-refactor`.
+Each saved backup is created as a `.zip` archive with a numeric prefix such as
+`1.first.zip`, `2.quick_save.zip`, `3.before-refactor.zip`.
 
 ## Features
 
 - Interactive terminal menu for `Save`, `Restore`, and `List`
 - Quick-save entrypoint for one-command snapshots
-- Full directory copy for nested files and folders
-- Restore flow that creates a temporary snapshot before replacing the origin folder
+- Backup storage as `.zip` archives
+- Restore flow that unpacks an archive into a temporary directory before replacing the origin folder
 - Plain text fallback when `/dev/tty` is not available
 - `golangci-lint` configuration and CI workflow included
 
@@ -25,11 +26,11 @@ Each saved backup is created as a directory with a numeric prefix such as `1.fir
 - `main.go`: main interactive CLI entrypoint
 - `cmd/quick-save/main.go`: shortcut command that runs quick-save directly
 - `pkg/core`: environment loading
-- `pkg/file_manager`: copy, overwrite, cleanup, folder listing
+- `pkg/file_manager`: archive create/extract, copy, overwrite, cleanup, backup listing
 - `pkg/io_manager`: menu rendering and console input
 - `pkg/runner`: save and restore orchestration
 - `origin/`: sample source directory for local experiments
-- `backups/`: sample backup directory for local experiments
+- `backups/`: sample archive directory for local experiments
 
 ## Requirements
 
@@ -101,10 +102,11 @@ Choose action:
 3. List
 Choice: 1
 Enter backup name: before-config-change
-Folder ./origin saved to ./backups/4.before-config-change
+Folder ./origin saved to ./backups/4.before-config-change.zip
 ```
 
-The application automatically prefixes the backup with the next numeric index.
+The application automatically prefixes the backup with the next numeric index
+and stores it as a `.zip` file.
 
 ### 2. Restore a backup
 
@@ -127,11 +129,12 @@ Choose restore file:
 2. 2.quick_save
 3. 4.before-config-change
 Choice: 3
-Folder ./origin restored from ./backups/4.before-config-change
+Folder ./origin restored from ./backups/4.before-config-change.zip
 ```
 
-Before restoring, the current state of `ORIGIN_DIR` is copied to `BACKUP_DIR/tmp`.
-If the restore copy fails, the application attempts to roll back to that temporary snapshot.
+Before restoring, the current state of `ORIGIN_DIR` is copied into a temporary snapshot directory.
+The selected archive is unpacked into a separate temporary directory, and only then copied into `ORIGIN_DIR`.
+If the final restore copy fails, the application attempts to roll back to the temporary snapshot.
 
 ### 3. List backups
 
@@ -152,7 +155,6 @@ Choice: 3
 1.initial
 2.quick_save
 4.before-config-change
-tmp
 ```
 
 ### 4. Quick save
@@ -166,7 +168,7 @@ go run ./cmd/quick-save
 This creates a backup named like:
 
 ```text
-Folder ./origin saved to ./backups/5.quick_save
+Folder ./origin saved to ./backups/5.quick_save.zip
 ```
 
 ## Interaction Modes
@@ -178,10 +180,10 @@ This makes the tool usable both in an interactive terminal and in simpler shell 
 
 ## How Backups Are Created
 
-- `Save` copies `ORIGIN_DIR` into a new directory under `BACKUP_DIR`
-- Existing backup directories are not overwritten
+- `Save` packs `ORIGIN_DIR` into a new `.zip` archive under `BACKUP_DIR`
+- Existing archive files are not overwritten
 - The next backup index is calculated from the highest existing numeric prefix
-- `Restore` replaces the contents of `ORIGIN_DIR` with the selected backup
+- `Restore` unpacks the selected archive and replaces the contents of `ORIGIN_DIR`
 
 ## Development Notes
 
@@ -202,5 +204,5 @@ golangci-lint run
 ## Limitations
 
 - The tool assumes `.env` exists in the repository root
-- Backups are directory copies, not compressed archives
-- Restore uses a fixed temporary backup directory named `tmp` inside `BACKUP_DIR`
+- Backups are standard `.zip` archives rather than incremental backups
+- Very large folders may take longer to save and restore because of archive creation and extraction
